@@ -1,3 +1,5 @@
+// 12/16 LED Ring
+
 
 #include <Arduino.h>
 #include <ESP8266WiFi.h>
@@ -13,7 +15,7 @@ static const char *sta_password = "xxxxxxxxxx";
 static const char *esp_softap_ssid = "esp32lsd";
 static const char *esp_softap_pass = "11223344Lap";
 
-static const uint8_t defaultvalue=128;
+static const uint8_t defaultvalue=255;
 
 static const uint8_t red=0;
 static const uint8_t yellow=42;
@@ -38,6 +40,39 @@ ESP8266WebServer server(80);
 
 static uint8_t currentpattern=0;
 static uint8_t ledcolorbuff[NUM_LEDS]={0};
+static uint8_t ledvaluebuff[NUM_LEDS]={0};
+
+#if NUM_LEDS==16
+static const char *ledcolornums[NUM_LEDS]=
+{
+"newledcolor00","newledcolor01","newledcolor02","newledcolor03",
+"newledcolor04","newledcolor05","newledcolor06","newledcolor07",
+"newledcolor08","newledcolor09","newledcolor10","newledcolor11",
+"newledcolor12","newledcolor13","newledcolor14","newledcolor15"
+};
+static const char *ledvaluenums[NUM_LEDS]=
+{
+"newledvalue00","newledvalue01","newledvalue02","newledvalue03",
+"newledvalue04","newledvalue05","newledvalue06","newledvalue07",
+"newledvalue08","newledvalue09","newledvalue10","newledvalue11",
+"newledvalue12","newledvalue13","newledvalue14","newledvalue15"
+};
+#endif
+
+#if NUM_LEDS==12
+static const char *ledcolornums[NUM_LEDS]=
+{
+"newledcolor00","newledcolor01","newledcolor02","newledcolor03",
+"newledcolor04","newledcolor05","newledcolor06","newledcolor07",
+"newledcolor08","newledcolor09","newledcolor10","newledcolor11"
+};
+static const char *ledvaluenums[NUM_LEDS]=
+{
+"newledvalue00","newledvalue01","newledvalue02","newledvalue03",
+"newledvalue04","newledvalue05","newledvalue06","newledvalue07",
+"newledvalue08","newledvalue09","newledvalue10","newledvalue11"
+};
+#endif
 
 
 //-------------------------------------------------------------------------------------------------
@@ -101,38 +136,30 @@ void handle_root(void)
     page +="</form>";
 
     page +="<form action=\"/setpattern3\"method=\"POST\">";
-    page +="<input type=\"text\"name=\"newledcolor00\"size=\"4\"placeholder=\"0-255\">";
-    page +="<input type=\"submit\"value=\"Save\">";
-    page +="<input type=\"text\"name=\"newledcolor01\"size=\"4\"placeholder=\"0-255\">";
-    page +="<input type=\"submit\"value=\"Save\">";
-    page +="<input type=\"text\"name=\"newledcolor02\"size=\"4\"placeholder=\"0-255\">";
-    page +="<input type=\"submit\"value=\"Save\">";
-    page +="<input type=\"text\"name=\"newledcolor03\"size=\"4\"placeholder=\"0-255\">";
-    page +="<input type=\"submit\"value=\"Save\"></br>";
-    page +="<input type=\"text\"name=\"newledcolor04\"size=\"4\"placeholder=\"0-255\">";
-    page +="<input type=\"submit\"value=\"Save\">";
-    page +="<input type=\"text\"name=\"newledcolor05\"size=\"4\"placeholder=\"0-255\">";
-    page +="<input type=\"submit\"value=\"Save\">";
-    page +="<input type=\"text\"name=\"newledcolor06\"size=\"4\"placeholder=\"0-255\">";
-    page +="<input type=\"submit\"value=\"Save\">";
-    page +="<input type=\"text\"name=\"newledcolor07\"size=\"4\"placeholder=\"0-255\">";
-    page +="<input type=\"submit\"value=\"Save\"></br>";
-    page +="<input type=\"text\"name=\"newledcolor08\"size=\"4\"placeholder=\"0-255\">";
-    page +="<input type=\"submit\"value=\"Save\">";
-    page +="<input type=\"text\"name=\"newledcolor09\"size=\"4\"placeholder=\"0-255\">";
-    page +="<input type=\"submit\"value=\"Save\">";
-    page +="<input type=\"text\"name=\"newledcolor10\"size=\"4\"placeholder=\"0-255\">";
-    page +="<input type=\"submit\"value=\"Save\">";
-    page +="<input type=\"text\"name=\"newledcolor11\"size=\"4\"placeholder=\"0-255\">";
-    page +="<input type=\"submit\"value=\"Save\"></br>";
-    page +="<input type=\"text\"name=\"newledcolor12\"size=\"4\"placeholder=\"0-255\">";
-    page +="<input type=\"submit\"value=\"Save\">";
-    page +="<input type=\"text\"name=\"newledcolor13\"size=\"4\"placeholder=\"0-255\">";
-    page +="<input type=\"submit\"value=\"Save\">";
-    page +="<input type=\"text\"name=\"newledcolor14\"size=\"4\"placeholder=\"0-255\">";
-    page +="<input type=\"submit\"value=\"Save\">";
-    page +="<input type=\"text\" name=\"newledcolor15\"size=\"4\"placeholder=\"0-255\">";
-    page +="<input type=\"submit\"value=\"Save\">";
+    for(uint8_t c=0; c<NUM_LEDS; c++)
+        {
+        page +="<input type=\"text\"name=\"";
+        page +=ledcolornums[c];
+        page +="\"size=\"3\"placeholder=\"";
+        page +=ledcolorbuff[c];
+        page +="\">";
+        if(c==3 || c==7 || c==11 || c==15) page +="</br>";
+        }
+    page +="</br>";
+    for(uint8_t c=0; c<NUM_LEDS; c++)
+        {
+        page +="<input type=\"text\"name=\"";
+        page +=ledvaluenums[c];
+        page +="\"size=\"3\"placeholder=\"";
+        page +=ledvaluebuff[c];
+        page +="\">";
+        if(c==3 || c==7 || c==11 || c==15) page +="</br>";
+        }
+    page +="</br>";
+    page +="<input type=\"submit\"value=\"Save\"></form>";
+
+    page +="<form action=\"/navpatterns\"method=\"POST\">";
+    page +="<input type=\"submit\"name=\"pattern4\"value=\"4\"></br>";
     page +="</form>";
 
     page +="<p><a href=\"/\">Home</a></p></body></html>";
@@ -195,50 +222,42 @@ void handle_changepattern(void)
     else if(server.hasArg("pattern1")) { if(currentpattern==1) currentpattern=0; else currentpattern=1; }
     else if(server.hasArg("pattern2")) { currentpattern=2; }
     else if(server.hasArg("pattern3")) { currentpattern=3; }
+    else if(server.hasArg("pattern4")) { currentpattern=4; }
     else { server_send_invalid_request(); return; }
 
     handle_root();
     }
 
-static const char *lednums[16]=
-{
-"newledcolor00",
-"newledcolor01",
-"newledcolor02",
-"newledcolor03",
-"newledcolor04",
-"newledcolor05",
-"newledcolor06",
-"newledcolor07",
-"newledcolor08",
-"newledcolor09",
-"newledcolor10",
-"newledcolor11",
-"newledcolor12",
-"newledcolor13",
-"newledcolor14",
-"newledcolor15"
-};
 
 //-------------------------------------------------------------------------------------------------
 void handle_changepattern3(void)
     {
-    for(uint8_t c=0; c<16; c++)
+    bool statusflag=false;
+    for(uint8_t c=0; c<NUM_LEDS; c++)
         {
-        if(server.hasArg(lednums[c]) && server.arg(lednums[c])!=NULL) 
+        if(server.hasArg(ledcolornums[c]) && server.arg(ledcolornums[c])!=NULL) 
             {
-            String str1=server.arg(lednums[c]);
+            String str1=server.arg(ledcolornums[c]);
             char strbuff[4]="";
             str1.toCharArray(strbuff,4);
             uint16_t result=atoi(strbuff);
-            if(result>255) break;
+            if(result>255) result=255;
             ledcolorbuff[c]=result;
-            handle_root();
-            return;
+            statusflag=true;
+            }
+        if(server.hasArg(ledvaluenums[c]) && server.arg(ledvaluenums[c])!=NULL) 
+            {
+            String str1=server.arg(ledvaluenums[c]);
+            char strbuff[4]="";
+            str1.toCharArray(strbuff,4);
+            uint16_t result=atoi(strbuff);
+            if(result>255) result=255;
+            ledvaluebuff[c]=result;
+            statusflag=true;
             }
         }
-    server_send_invalid_request();
-    return;
+    if(statusflag) handle_root();
+    else server_send_invalid_request();
     }
 
 
@@ -258,6 +277,12 @@ void setup(void)
     FastLED.show();
 
     wifi_init((char*)sta_ssid, (char*)sta_password);
+
+    for(uint8_t c=0; c<NUM_LEDS; c++)
+        {
+        ledcolorbuff[c]=red;
+        ledvaluebuff[c]=defaultvalue;
+        }
 
     server.on("/", handle_root);
     server.onNotFound(handle_404);
@@ -325,9 +350,38 @@ void loop(void)
 
     else if(currentpattern==3)
         {
-        for(uint8_t c=0; c<NUM_LEDS; c++) leds[c] = CHSV(ledcolorbuff[c], 255, currentvalue);
+        for(uint8_t c=0; c<NUM_LEDS; c++) leds[c] = CHSV(ledcolorbuff[c], 255, ledvaluebuff[c]);
         FastLED.show();
         }
+  
+    else if(currentpattern==4)
+        {
+        static uint8_t cc=0;
+        if(ereset)
+            {
+            ereset=false;
+            cc=0;
+            }
+        
+        static uint32_t told=0;
+        uint32_t tnew=millis();
+        const uint32_t PAUSE=50;
+    
+        if(tnew-told>PAUSE)
+            {
+            told=tnew;
+            for(uint8_t c=0; c<NUM_LEDS; c++)
+                {
+                if(c+cc>=NUM_LEDS) leds[c] = CHSV(ledcolorbuff[(c+cc)-(NUM_LEDS)], 255, ledvaluebuff[(c+cc)-(NUM_LEDS)]);
+                else leds[c] = CHSV(ledcolorbuff[c+cc], 255, ledvaluebuff[c+cc]);
+                }
+            
+            FastLED.show();
+
+            cc++;
+            if(cc>=NUM_LEDS) cc=0;
+            }
+        } 
     }
 
 
