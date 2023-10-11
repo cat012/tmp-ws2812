@@ -15,7 +15,7 @@ static const char *sta_password = "xxxxxxxxxx";
 static const char *esp_softap_ssid = "esp32lsd";
 static const char *esp_softap_pass = "11223344Lap";
 
-static const uint8_t defaultvalue=255;
+static const uint8_t defaultvalue=128;
 
 static const uint8_t red=0;
 static const uint8_t yellow=42;
@@ -25,7 +25,7 @@ static const uint8_t blue=181;
 static const uint8_t purple=213;
 
 static uint8_t currentvalue=defaultvalue;
-static uint8_t currentcolor=aqua;
+static uint8_t currentcolor=green;
 
 
 #define LED_PIN     5
@@ -41,6 +41,11 @@ ESP8266WebServer server(80);
 static uint8_t currentpattern=0;
 static uint8_t ledcolorbuff[NUM_LEDS]={0};
 static uint8_t ledvaluebuff[NUM_LEDS]={0};
+
+static const uint8_t maxtpattern4speed=20;
+static const uint8_t mintpattern4speed=200;
+static const uint8_t deftpattern4speed=50;
+static uint8_t pattern4speed=deftpattern4speed;
 
 #if NUM_LEDS==16
 static const char *ledcolornums[NUM_LEDS]=
@@ -129,9 +134,9 @@ void handle_root(void)
     page +="Pattern: ";
     page +=currentpattern;
     page +="<form action=\"/navpatterns\"method=\"POST\">";
-    page +="<input type=\"submit\"name=\"pattern0\"value=\"0\"></br>"; 
-    page +="<input type=\"submit\"name=\"pattern1\"value=\"1\"></br>";
-    page +="<input type=\"submit\"name=\"pattern2\"value=\"2\"></br>";
+    page +="<input type=\"submit\"name=\"pattern0\"value=\"0\"> "; 
+    page +="<input type=\"submit\"name=\"pattern1\"value=\"1\"> ";
+    page +="<input type=\"submit\"name=\"pattern2\"value=\"2\"></br></br>";
     page +="<input type=\"submit\"name=\"pattern3\"value=\"3\">";
     page +="</form>";
 
@@ -156,6 +161,9 @@ void handle_root(void)
         if(c==3 || c==7 || c==11 || c==15) page +="</br>";
         }
     page +="</br>";
+    page +="<input type=\"text\"name=\"newspeed\"size=\"3\"placeholder=\"";
+    page +=pattern4speed;
+    page +="\"></br></br>";
     page +="<input type=\"submit\"value=\"Save\"></form>";
 
     page +="<form action=\"/navpatterns\"method=\"POST\">";
@@ -256,6 +264,17 @@ void handle_changepattern3(void)
             statusflag=true;
             }
         }
+    if(server.hasArg("newspeed") && server.arg("newspeed")!=NULL) 
+            {
+            String str1=server.arg("newspeed");
+            char strbuff[4]="";
+            str1.toCharArray(strbuff,4);
+            uint16_t result=atoi(strbuff);
+            if(result>mintpattern4speed) result=mintpattern4speed;
+            if(result<maxtpattern4speed) result=maxtpattern4speed;
+            pattern4speed=result;
+            statusflag=true;
+            }
     if(statusflag) handle_root();
     else server_send_invalid_request();
     }
@@ -357,17 +376,12 @@ void loop(void)
     else if(currentpattern==4)
         {
         static uint8_t cc=0;
-        if(ereset)
-            {
-            ereset=false;
-            cc=0;
-            }
+        if(ereset) { ereset=false; cc=0; }
         
         static uint32_t told=0;
         uint32_t tnew=millis();
-        const uint32_t PAUSE=50;
     
-        if(tnew-told>PAUSE)
+        if(tnew-told>pattern4speed)
             {
             told=tnew;
             for(uint8_t c=0; c<NUM_LEDS; c++)
@@ -377,7 +391,6 @@ void loop(void)
                 }
             
             FastLED.show();
-
             cc++;
             if(cc>=NUM_LEDS) cc=0;
             }
